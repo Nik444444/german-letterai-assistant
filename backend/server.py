@@ -560,7 +560,35 @@ async def quick_gemini_setup(
         is_valid = await modern_llm_manager.test_api_key("gemini", gemini_data.api_key)
         
         if not is_valid:
-            raise HTTPException(status_code=400, detail="Недействительный Gemini API ключ")
+            # Provide more specific error message based on the issue
+            error_message = "Недействительный Gemini API ключ"
+            
+            # Check if emergentintegrations is available
+            try:
+                from emergentintegrations.llm.chat import LlmChat
+                # If available, it's a real API key issue
+                error_message = "Недействительный Gemini API ключ. Проверьте правильность ключа."
+            except ImportError:
+                # If not available, mention fallback mode
+                error_message = "Невозможно проверить API ключ: система работает в режиме ограниченной функциональности. Ключ будет сохранен для использования при восстановлении полной функциональности."
+                
+                # In fallback mode, we still save the key if it looks valid
+                if gemini_data.api_key and gemini_data.api_key.startswith('AIza') and len(gemini_data.api_key) > 30:
+                    logger.info("Saving API key in fallback mode")
+                    current_user["gemini_api_key"] = gemini_data.api_key
+                    await db.save_user(current_user)
+                    
+                    return {
+                        "message": "Gemini API ключ сохранен. Система работает в режиме ограниченной функциональности, но ключ будет использован при восстановлении полной функциональности.",
+                        "status": "fallback",
+                        "provider": "Gemini",
+                        "model": "gemini-2.0-flash",
+                        "fallback_mode": True
+                    }
+                else:
+                    error_message = "Недействительный формат Gemini API ключа. Ключ должен начинаться с 'AIza'."
+            
+            raise HTTPException(status_code=400, detail=error_message)
         
         # Save the API key
         current_user["gemini_api_key"] = gemini_data.api_key

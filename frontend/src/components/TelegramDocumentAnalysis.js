@@ -96,9 +96,9 @@ const TelegramDocumentAnalysis = ({ onBack }) => {
         try {
             console.log('Starting file analysis:', file.name, 'User token:', user?.token ? 'present' : 'missing');
             
-            // Проверяем есть ли у пользователя API ключ
-            if (!user?.has_gemini_api_key && !user?.has_api_key_1 && !user?.gemini_api_key) {
-                const errorMsg = t('noApiKey');
+            // Проверяем есть ли токен для аутентификации
+            if (!user?.token) {
+                const errorMsg = 'Необходимо войти в систему для анализа документов';
                 setError(errorMsg);
                 if (isTelegramWebApp()) {
                     hapticFeedback('warning');
@@ -106,6 +106,11 @@ const TelegramDocumentAnalysis = ({ onBack }) => {
                 }
                 setLoading(false);
                 return;
+            }
+            
+            // Уведомляем пользователя, если нет API ключей (но продолжаем с системными)
+            if (!user?.has_gemini_api_key && !user?.has_api_key_1 && !user?.gemini_api_key) {
+                console.log('User has no API key, will try system providers');
             }
             
             // Симуляция прогресса загрузки

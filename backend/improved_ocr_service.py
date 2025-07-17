@@ -307,8 +307,9 @@ class ImprovedOCRService:
                     logger.warning(f"Azure Vision API failed: {e}")
             
             # Метод 4: Последний fallback - передать изображение в LLM с базовым запросом
-            if self.llm_vision_available:
+            if (self.llm_vision_available or user_providers):
                 try:
+                    logger.info("Trying LLM Vision fallback with simple prompt")
                     simple_prompt = "Извлеките весь текст из этого изображения. Отвечайте только текстом, который видите."
                     if user_providers:
                         for provider_type, model_name, api_key in user_providers:
@@ -319,11 +320,21 @@ class ImprovedOCRService:
                                     logger.info("✅ LLM Vision fallback successful")
                                     return result.strip()
                             except Exception as e:
+                                logger.warning(f"LLM Vision fallback failed for {provider_type}: {e}")
                                 continue
+                    else:
+                        # Пробуем системные провайдеры
+                        try:
+                            result, provider_name = await modern_llm_manager.generate_content(simple_prompt, image_path)
+                            if result and len(result.strip()) > 5:
+                                logger.info(f"✅ LLM Vision fallback successful with {provider_name}")
+                                return result.strip()
+                        except Exception as e:
+                            logger.warning(f"System LLM Vision fallback failed: {e}")
                 except Exception as e:
-                    logger.warning(f"LLM Vision fallback failed: {e}")
+                    logger.warning(f"LLM Vision fallback completely failed: {e}")
             
-            logger.warning("❌ All OCR methods failed")
+            logger.warning("❌ All OCR methods failed for meaningful text extraction")
             return "Не удалось извлечь текст из изображения. Попробуйте изображение лучшего качества."
             
         except Exception as e:

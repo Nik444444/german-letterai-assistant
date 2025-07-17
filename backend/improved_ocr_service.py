@@ -13,6 +13,11 @@ import asyncio
 from datetime import datetime
 import mimetypes
 
+# Импорт Tesseract OCR
+import pytesseract
+import cv2
+import numpy as np
+
 # Импорт LLM manager для Vision анализа
 from modern_llm_manager import modern_llm_manager
 

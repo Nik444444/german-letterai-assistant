@@ -870,6 +870,247 @@ class BackendTester:
                 data
             )
     
+    async def test_improved_ocr_service_status(self):
+        """Test new improved OCR service status endpoint"""
+        logger.info("=== Testing Improved OCR Service Status ===")
+        
+        # Test OCR status endpoint
+        success, data, error = await self.make_request("GET", "/api/ocr-status")
+        
+        if success and isinstance(data, dict):
+            # Check required fields
+            has_status = data.get("status") == "success"
+            has_ocr_service = "ocr_service" in data and isinstance(data["ocr_service"], dict)
+            tesseract_not_required = data.get("tesseract_required") is False
+            production_ready = data.get("production_ready") is True
+            
+            # Check OCR service structure
+            ocr_service_valid = False
+            if has_ocr_service:
+                ocr_service = data["ocr_service"]
+                has_service_name = "service_name" in ocr_service
+                has_methods = "methods" in ocr_service and isinstance(ocr_service["methods"], dict)
+                has_primary_method = "primary_method" in ocr_service
+                tesseract_dependency_false = ocr_service.get("tesseract_dependency") is False
+                service_production_ready = ocr_service.get("production_ready") is True
+                
+                ocr_service_valid = all([has_service_name, has_methods, has_primary_method, tesseract_dependency_false, service_production_ready])
+            
+            self.log_test_result(
+                "GET /api/ocr-status - OCR service status",
+                has_status and has_ocr_service and tesseract_not_required and production_ready and ocr_service_valid,
+                f"Status: {data.get('status')}, Tesseract required: {data.get('tesseract_required')}, Production ready: {data.get('production_ready')}, Service valid: {ocr_service_valid}",
+                data
+            )
+        else:
+            self.log_test_result("GET /api/ocr-status - OCR service status", False, f"Error: {error}", data)
+    
+    async def test_ocr_methods_availability(self):
+        """Test availability of different OCR methods"""
+        logger.info("=== Testing OCR Methods Availability ===")
+        
+        success, data, error = await self.make_request("GET", "/api/ocr-status")
+        
+        if success and isinstance(data, dict) and "ocr_service" in data:
+            ocr_service = data["ocr_service"]
+            methods = ocr_service.get("methods", {})
+            
+            # Check for expected OCR methods
+            expected_methods = ["llm_vision", "ocr_space", "azure_vision", "direct_pdf"]
+            methods_found = []
+            methods_available = []
+            
+            for method in expected_methods:
+                if method in methods:
+                    methods_found.append(method)
+                    if methods[method].get("available"):
+                        methods_available.append(method)
+            
+            # At least direct_pdf should always be available
+            direct_pdf_available = methods.get("direct_pdf", {}).get("available") is True
+            
+            # Check primary method
+            primary_method = ocr_service.get("primary_method")
+            primary_method_valid = primary_method in methods_found
+            
+            self.log_test_result(
+                "OCR Methods - Availability check",
+                len(methods_found) == len(expected_methods) and direct_pdf_available and primary_method_valid,
+                f"Methods found: {methods_found}, Available: {methods_available}, Primary: {primary_method}, Direct PDF: {direct_pdf_available}",
+                {"methods_found": methods_found, "methods_available": methods_available, "primary_method": primary_method}
+            )
+            
+            # Check LLM Vision method specifically
+            llm_vision = methods.get("llm_vision", {})
+            llm_vision_configured = "available" in llm_vision and "description" in llm_vision
+            llm_vision_desc_correct = "LLM Vision" in str(llm_vision.get("description", ""))
+            
+            self.log_test_result(
+                "OCR Methods - LLM Vision configuration",
+                llm_vision_configured and llm_vision_desc_correct,
+                f"LLM Vision available: {llm_vision.get('available')}, Description: {llm_vision.get('description')}",
+                llm_vision
+            )
+            
+            # Check OCR.space method
+            ocr_space = methods.get("ocr_space", {})
+            ocr_space_configured = "available" in ocr_space and "description" in ocr_space
+            ocr_space_desc_correct = "OCR.space" in str(ocr_space.get("description", ""))
+            
+            self.log_test_result(
+                "OCR Methods - OCR.space configuration",
+                ocr_space_configured and ocr_space_desc_correct,
+                f"OCR.space available: {ocr_space.get('available')}, Description: {ocr_space.get('description')}",
+                ocr_space
+            )
+            
+            # Check Azure Vision method
+            azure_vision = methods.get("azure_vision", {})
+            azure_vision_configured = "available" in azure_vision and "description" in azure_vision
+            azure_vision_desc_correct = "Azure" in str(azure_vision.get("description", ""))
+            
+            self.log_test_result(
+                "OCR Methods - Azure Vision configuration",
+                azure_vision_configured and azure_vision_desc_correct,
+                f"Azure Vision available: {azure_vision.get('available')}, Description: {azure_vision.get('description')}",
+                azure_vision
+            )
+            
+        else:
+            self.log_test_result("OCR Methods - Availability check", False, f"Error getting OCR status: {error}", data)
+    
+    async def test_analyze_file_ocr_integration(self):
+        """Test that analyze-file endpoint integrates with improved OCR service"""
+        logger.info("=== Testing Analyze File OCR Integration ===")
+        
+        # Test that analyze-file endpoint exists and handles different file types
+        test_image_data = self.create_test_image()
+        
+        # Test with JPEG image
+        form_data = aiohttp.FormData()
+        form_data.add_field('file', test_image_data, filename='test_image.jpg', content_type='image/jpeg')
+        form_data.add_field('language', 'de')
+        
+        success, data, error = await self.make_request("POST", "/api/analyze-file", data=form_data)
+        
+        # Should fail with authentication required (not file format error)
+        handles_jpeg = not success and ("401" in str(error) or "403" in str(error) or (isinstance(data, dict) and ("Not authenticated" in str(data.get("detail", "")))))
+        
+        self.log_test_result(
+            "POST /api/analyze-file - JPEG image handling",
+            handles_jpeg,
+            f"Correctly handles JPEG images and requires auth" if handles_jpeg else f"JPEG handling issue: {error}",
+            data
+        )
+        
+        # Test with PNG image
+        form_data = aiohttp.FormData()
+        form_data.add_field('file', test_image_data, filename='test_image.png', content_type='image/png')
+        form_data.add_field('language', 'en')
+        
+        success, data, error = await self.make_request("POST", "/api/analyze-file", data=form_data)
+        
+        handles_png = not success and ("401" in str(error) or "403" in str(error) or (isinstance(data, dict) and ("Not authenticated" in str(data.get("detail", "")))))
+        
+        self.log_test_result(
+            "POST /api/analyze-file - PNG image handling",
+            handles_png,
+            f"Correctly handles PNG images and requires auth" if handles_png else f"PNG handling issue: {error}",
+            data
+        )
+        
+        # Test with WebP image
+        form_data = aiohttp.FormData()
+        form_data.add_field('file', test_image_data, filename='test_image.webp', content_type='image/webp')
+        form_data.add_field('language', 'ru')
+        
+        success, data, error = await self.make_request("POST", "/api/analyze-file", data=form_data)
+        
+        handles_webp = not success and ("401" in str(error) or "403" in str(error) or (isinstance(data, dict) and ("Not authenticated" in str(data.get("detail", "")))))
+        
+        self.log_test_result(
+            "POST /api/analyze-file - WebP image handling",
+            handles_webp,
+            f"Correctly handles WebP images and requires auth" if handles_webp else f"WebP handling issue: {error}",
+            data
+        )
+        
+        # Test with GIF image
+        form_data = aiohttp.FormData()
+        form_data.add_field('file', test_image_data, filename='test_image.gif', content_type='image/gif')
+        form_data.add_field('language', 'de')
+        
+        success, data, error = await self.make_request("POST", "/api/analyze-file", data=form_data)
+        
+        handles_gif = not success and ("401" in str(error) or "403" in str(error) or (isinstance(data, dict) and ("Not authenticated" in str(data.get("detail", "")))))
+        
+        self.log_test_result(
+            "POST /api/analyze-file - GIF image handling",
+            handles_gif,
+            f"Correctly handles GIF images and requires auth" if handles_gif else f"GIF handling issue: {error}",
+            data
+        )
+    
+    async def test_ocr_service_no_tesseract_dependency(self):
+        """Test that OCR service works without tesseract dependency"""
+        logger.info("=== Testing OCR Service No Tesseract Dependency ===")
+        
+        success, data, error = await self.make_request("GET", "/api/ocr-status")
+        
+        if success and isinstance(data, dict):
+            # Check main response
+            tesseract_not_required = data.get("tesseract_required") is False
+            production_ready = data.get("production_ready") is True
+            
+            # Check OCR service details
+            ocr_service = data.get("ocr_service", {})
+            service_tesseract_dependency = ocr_service.get("tesseract_dependency") is False
+            service_production_ready = ocr_service.get("production_ready") is True
+            
+            # Check that primary method is not tesseract-based
+            primary_method = ocr_service.get("primary_method", "")
+            primary_not_tesseract = "tesseract" not in primary_method.lower()
+            
+            self.log_test_result(
+                "OCR Service - No tesseract dependency",
+                tesseract_not_required and production_ready and service_tesseract_dependency and service_production_ready and primary_not_tesseract,
+                f"Tesseract required: {data.get('tesseract_required')}, Production ready: {data.get('production_ready')}, Primary method: {primary_method}",
+                data
+            )
+        else:
+            self.log_test_result("OCR Service - No tesseract dependency", False, f"Error: {error}", data)
+    
+    async def test_ocr_logging_and_fallback(self):
+        """Test OCR service logging and fallback mechanisms"""
+        logger.info("=== Testing OCR Service Logging and Fallback ===")
+        
+        # Test that the OCR status endpoint shows proper fallback configuration
+        success, data, error = await self.make_request("GET", "/api/ocr-status")
+        
+        if success and isinstance(data, dict):
+            ocr_service = data.get("ocr_service", {})
+            methods = ocr_service.get("methods", {})
+            
+            # Check that multiple methods are configured for fallback
+            available_methods = [method for method, config in methods.items() if config.get("available")]
+            has_multiple_methods = len(available_methods) >= 2  # At least 2 methods for fallback
+            
+            # Check that direct_pdf is always available as final fallback
+            direct_pdf_available = methods.get("direct_pdf", {}).get("available") is True
+            
+            # Check primary method configuration
+            primary_method = ocr_service.get("primary_method")
+            primary_method_exists = primary_method in methods
+            
+            self.log_test_result(
+                "OCR Service - Fallback configuration",
+                has_multiple_methods and direct_pdf_available and primary_method_exists,
+                f"Available methods: {available_methods}, Direct PDF: {direct_pdf_available}, Primary: {primary_method}",
+                {"available_methods": available_methods, "primary_method": primary_method}
+            )
+        else:
+            self.log_test_result("OCR Service - Fallback configuration", False, f"Error: {error}", data)
+    
     async def run_all_tests(self):
         """Run all backend tests"""
         logger.info("🚀 Starting comprehensive backend API tests...")

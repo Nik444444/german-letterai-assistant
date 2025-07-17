@@ -51,6 +51,7 @@ services:
   - type: web
     name: german-ai-frontend
     env: docker
+    runtime: docker
     region: oregon
     plan: starter
     dockerfilePath: ./frontend/Dockerfile

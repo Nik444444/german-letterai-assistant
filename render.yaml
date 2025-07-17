@@ -2,12 +2,27 @@ services:
   # Backend сервис
   - type: web
     name: german-ai-backend
-    env: docker
-    dockerfilePath: ./Dockerfile.backend
-    dockerContext: .
+    env: python
+    buildCommand: |
+      apt-get update && apt-get install -y \
+        tesseract-ocr \
+        tesseract-ocr-deu \
+        tesseract-ocr-rus \
+        tesseract-ocr-eng \
+        tesseract-ocr-ukr \
+        libtesseract-dev \
+        libgl1-mesa-glx \
+        libglib2.0-0 \
+        libsm6 \
+        libxext6 \
+        libxrender-dev \
+        libgomp1 \
+        poppler-utils \
+        && pip install --upgrade pip \
+        && pip install -r backend/requirements.txt \
+        && pip install emergentintegrations --extra-index-url https://d33sy5i8bnduwe.cloudfront.net/simple/ --trusted-host d33sy5i8bnduwe.cloudfront.net || echo "emergentintegrations installation failed"
+    startCommand: cd backend && python server.py
     plan: starter
-    buildCommand: ""
-    startCommand: "./start.sh"
     envVars:
       - key: JWT_SECRET_KEY
         generateValue: true
@@ -22,7 +37,11 @@ services:
       - key: ANTHROPIC_API_KEY
         sync: false
       - key: SQLITE_DB_PATH
-        value: /app/data/german_ai.db
+        value: /opt/render/project/src/backend/data/german_ai.db
+      - key: TESSERACT_AVAILABLE
+        value: true
+      - key: TESSERACT_VERSION
+        value: 5.3.0
     
   # Frontend сервис
   - type: web

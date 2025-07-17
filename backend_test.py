@@ -1111,11 +1111,237 @@ class BackendTester:
         else:
             self.log_test_result("OCR Service - Fallback configuration", False, f"Error: {error}", data)
     
+    async def test_render_deployment_tesseract_fix(self):
+        """Test Render deployment fix - Tesseract as PRIMARY OCR method"""
+        logger.info("=== Testing Render Deployment Tesseract Fix ===")
+        
+        # Test 1: OCR Status shows tesseract_ocr as primary_method
+        success, data, error = await self.make_request("GET", "/api/ocr-status")
+        
+        if success and isinstance(data, dict):
+            ocr_service = data.get("ocr_service", {})
+            primary_method = ocr_service.get("primary_method")
+            tesseract_dependency = ocr_service.get("tesseract_dependency")
+            tesseract_version = ocr_service.get("tesseract_version")
+            production_ready = ocr_service.get("production_ready")
+            
+            # Check that tesseract_ocr is PRIMARY method (not fallback)
+            is_tesseract_primary = primary_method == "tesseract_ocr"
+            has_tesseract_dependency = tesseract_dependency is True
+            has_correct_version = tesseract_version == "5.3.0"
+            is_production_ready = production_ready is True
+            
+            self.log_test_result(
+                "OCR Status - Tesseract as PRIMARY method",
+                is_tesseract_primary and has_tesseract_dependency and has_correct_version and is_production_ready,
+                f"Primary: {primary_method}, Dependency: {tesseract_dependency}, Version: {tesseract_version}, Production: {production_ready}",
+                data
+            )
+        else:
+            self.log_test_result("OCR Status - Tesseract as PRIMARY method", False, f"Error: {error}", data)
+    
+    async def test_tesseract_system_availability(self):
+        """Test that Tesseract is available in the system"""
+        logger.info("=== Testing Tesseract System Availability ===")
+        
+        # Test OCR service status for tesseract availability
+        success, data, error = await self.make_request("GET", "/api/ocr-status")
+        
+        if success and isinstance(data, dict):
+            ocr_service = data.get("ocr_service", {})
+            methods = ocr_service.get("methods", {})
+            tesseract_method = methods.get("tesseract_ocr", {})
+            
+            # Check tesseract availability
+            tesseract_available = tesseract_method.get("available") is True
+            tesseract_description = tesseract_method.get("description", "")
+            has_correct_description = "традиционный OCR" in tesseract_description or "Tesseract OCR" in tesseract_description
+            
+            # Check that tesseract is marked as main method, not fallback
+            is_main_method = "основной метод" in tesseract_description or "primary" in tesseract_description.lower()
+            
+            self.log_test_result(
+                "Tesseract System - Availability check",
+                tesseract_available and has_correct_description and is_main_method,
+                f"Available: {tesseract_available}, Description: {tesseract_description}, Is main: {is_main_method}",
+                tesseract_method
+            )
+        else:
+            self.log_test_result("Tesseract System - Availability check", False, f"Error: {error}", data)
+    
+    async def test_tesseract_language_packages(self):
+        """Test that all required language packages are working"""
+        logger.info("=== Testing Tesseract Language Packages ===")
+        
+        # Test OCR service status for language support
+        success, data, error = await self.make_request("GET", "/api/ocr-status")
+        
+        if success and isinstance(data, dict):
+            ocr_service = data.get("ocr_service", {})
+            methods = ocr_service.get("methods", {})
+            tesseract_method = methods.get("tesseract_ocr", {})
+            
+            # Check if tesseract is available (implies language packages work)
+            tesseract_available = tesseract_method.get("available") is True
+            tesseract_description = tesseract_method.get("description", "")
+            
+            # Check for multi-language support indication
+            supports_multiple_languages = "многих языков" in tesseract_description or "languages" in tesseract_description.lower()
+            
+            self.log_test_result(
+                "Tesseract Language Packages - Multi-language support",
+                tesseract_available and supports_multiple_languages,
+                f"Available: {tesseract_available}, Multi-lang support: {supports_multiple_languages}",
+                tesseract_method
+            )
+        else:
+            self.log_test_result("Tesseract Language Packages - Multi-language support", False, f"Error: {error}", data)
+    
+    async def test_render_deployment_dependencies(self):
+        """Test that all dependencies are installed correctly for Render deployment"""
+        logger.info("=== Testing Render Deployment Dependencies ===")
+        
+        # Test 1: Modern LLM manager works (not in fallback mode)
+        success, data, error = await self.make_request("GET", "/api/modern-llm-status")
+        
+        if success and isinstance(data, dict):
+            has_modern_flag = data.get("modern") is True
+            status_success = data.get("status") == "success"
+            has_providers = "providers" in data and len(data["providers"]) > 0
+            
+            # Check that it's not in fallback mode
+            not_in_fallback = status_success and has_modern_flag
+            
+            self.log_test_result(
+                "Render Dependencies - Modern LLM manager (not fallback)",
+                not_in_fallback and has_providers,
+                f"Modern: {has_modern_flag}, Status: {data.get('status')}, Providers: {len(data.get('providers', {}))}, Not fallback: {not_in_fallback}",
+                data
+            )
+        else:
+            self.log_test_result("Render Dependencies - Modern LLM manager (not fallback)", False, f"Error: {error}", data)
+        
+        # Test 2: System is production ready
+        success, data, error = await self.make_request("GET", "/api/ocr-status")
+        
+        if success and isinstance(data, dict):
+            production_ready = data.get("production_ready") is True
+            ocr_service = data.get("ocr_service", {})
+            service_production_ready = ocr_service.get("production_ready") is True
+            
+            self.log_test_result(
+                "Render Dependencies - Production ready status",
+                production_ready and service_production_ready,
+                f"Main production ready: {production_ready}, OCR service production ready: {service_production_ready}",
+                data
+            )
+        else:
+            self.log_test_result("Render Dependencies - Production ready status", False, f"Error: {error}", data)
+    
+    async def test_system_not_in_fallback_mode(self):
+        """Test that system is NOT working in fallback mode"""
+        logger.info("=== Testing System Not in Fallback Mode ===")
+        
+        # Test 1: OCR service has tesseract as primary (not fallback)
+        success, data, error = await self.make_request("GET", "/api/ocr-status")
+        
+        if success and isinstance(data, dict):
+            ocr_service = data.get("ocr_service", {})
+            primary_method = ocr_service.get("primary_method")
+            tesseract_dependency = ocr_service.get("tesseract_dependency")
+            
+            # System should NOT be in fallback mode
+            not_in_fallback = primary_method == "tesseract_ocr" and tesseract_dependency is True
+            
+            self.log_test_result(
+                "System Status - Not in fallback mode (OCR)",
+                not_in_fallback,
+                f"Primary method: {primary_method}, Tesseract dependency: {tesseract_dependency}, Not fallback: {not_in_fallback}",
+                data
+            )
+        else:
+            self.log_test_result("System Status - Not in fallback mode (OCR)", False, f"Error: {error}", data)
+        
+        # Test 2: Modern LLM manager not in fallback
+        success, data, error = await self.make_request("GET", "/api/modern-llm-status")
+        
+        if success and isinstance(data, dict):
+            status = data.get("status")
+            modern_flag = data.get("modern")
+            
+            # Should not be in fallback/error mode
+            not_in_fallback_llm = status == "success" and modern_flag is True
+            
+            self.log_test_result(
+                "System Status - Not in fallback mode (LLM)",
+                not_in_fallback_llm,
+                f"Status: {status}, Modern: {modern_flag}, Not fallback: {not_in_fallback_llm}",
+                data
+            )
+        else:
+            self.log_test_result("System Status - Not in fallback mode (LLM)", False, f"Error: {error}", data)
+    
+    async def test_basic_functionality_after_render_fix(self):
+        """Test basic functionality after Render deployment fix"""
+        logger.info("=== Testing Basic Functionality After Render Fix ===")
+        
+        # Test 1: Health check works
+        success, data, error = await self.make_request("GET", "/api/health")
+        
+        if success and isinstance(data, dict):
+            status_healthy = data.get("status") == "healthy"
+            has_db_connection = "users_count" in data and "analyses_count" in data
+            
+            self.log_test_result(
+                "Basic Functionality - Health check",
+                status_healthy and has_db_connection,
+                f"Status: {data.get('status')}, DB connected: {has_db_connection}",
+                data
+            )
+        else:
+            self.log_test_result("Basic Functionality - Health check", False, f"Error: {error}", data)
+        
+        # Test 2: Authentication endpoints work
+        success, data, error = await self.make_request("POST", "/api/auth/google/verify", json={"credential": "invalid_token"})
+        
+        # Should fail with 400 (invalid token), not 500 (server error)
+        auth_endpoint_works = not success and "400" in str(error)
+        
+        self.log_test_result(
+            "Basic Functionality - Authentication endpoint",
+            auth_endpoint_works,
+            f"Auth endpoint properly handles requests" if auth_endpoint_works else f"Auth endpoint issue: {error}",
+            data
+        )
+        
+        # Test 3: Modern LLM status works
+        success, data, error = await self.make_request("GET", "/api/modern-llm-status")
+        
+        if success and isinstance(data, dict):
+            modern_llm_works = data.get("modern") is True and data.get("status") == "success"
+            
+            self.log_test_result(
+                "Basic Functionality - Modern LLM status",
+                modern_llm_works,
+                f"Modern LLM status working: {modern_llm_works}",
+                data
+            )
+        else:
+            self.log_test_result("Basic Functionality - Modern LLM status", False, f"Error: {error}", data)
+
     async def run_all_tests(self):
         """Run all backend tests"""
         logger.info("🚀 Starting comprehensive backend API tests...")
         
         try:
+            # PRIORITY TESTS FOR RENDER DEPLOYMENT FIX
+            await self.test_render_deployment_tesseract_fix()    # Test Tesseract as PRIMARY method
+            await self.test_tesseract_system_availability()      # Test Tesseract system availability
+            await self.test_tesseract_language_packages()        # Test language packages (deu, eng, rus, ukr)
+            await self.test_render_deployment_dependencies()     # Test all dependencies installed correctly
+            await self.test_system_not_in_fallback_mode()        # Test system NOT in fallback mode
+            await self.test_basic_functionality_after_render_fix() # Test basic functionality
+            
             await self.test_basic_health_endpoints()
             await self.test_api_health_endpoints()
             await self.test_llm_status_endpoint()

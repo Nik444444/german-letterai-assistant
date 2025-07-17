@@ -26,9 +26,10 @@ logger = logging.getLogger(__name__)
 class ImprovedOCRService:
     """
     Улучшенный OCR сервис с множественными методами извлечения текста:
-    1. LLM Vision (основной метод) - Gemini Pro Vision, GPT-4V, Claude 3.5 Sonnet
-    2. Бесплатные Online OCR API (fallback)
-    3. Базовое извлечение текста из PDF
+    1. Tesseract OCR (основной метод) - традиционный OCR с поддержкой многих языков
+    2. LLM Vision (fallback) - Gemini Pro Vision, GPT-4V, Claude 3.5 Sonnet
+    3. Бесплатные Online OCR API (fallback)
+    4. Базовое извлечение текста из PDF
     """
     
     def __init__(self):
@@ -37,14 +38,66 @@ class ImprovedOCRService:
         self.azure_vision_endpoint = os.environ.get('AZURE_COMPUTER_VISION_ENDPOINT')
         
         # Проверяем доступность различных методов
+        self.tesseract_available = self._check_tesseract_availability()
         self.llm_vision_available = self._check_llm_vision_availability()
         self.ocr_space_available = bool(self.ocr_space_api_key)
         self.azure_vision_available = bool(self.azure_vision_key and self.azure_vision_endpoint)
         
+        # Настройка tesseract конфигурации
+        self.tesseract_config = '--oem 3 --psm 6 -l ukr+rus+deu+eng'
+        self.tesseract_config_document = '--oem 3 --psm 4 -l ukr+rus+deu+eng'
+        self.tesseract_config_single_block = '--oem 3 --psm 6 -l ukr+rus+deu+eng'
+        
         logger.info(f"Improved OCR Service initialized:")
+        logger.info(f"  - Tesseract OCR available: {self.tesseract_available}")
         logger.info(f"  - LLM Vision available: {self.llm_vision_available}")
         logger.info(f"  - OCR.space available: {self.ocr_space_available}")
         logger.info(f"  - Azure Vision available: {self.azure_vision_available}")
+    
+    def _check_tesseract_availability(self) -> bool:
+        """Проверка доступности Tesseract OCR"""
+        try:
+            # Проверяем переменную окружения
+            tesseract_available = os.environ.get('TESSERACT_AVAILABLE', 'true').lower()
+            if tesseract_available == 'false':
+                logger.warning("TESSERACT_AVAILABLE=false - OCR functionality disabled")
+                return False
+            
+            # Проверяем, что tesseract установлен
+            version = pytesseract.get_tesseract_version()
+            logger.info(f"Tesseract version: {version}")
+            
+            # Проверяем доступные языки
+            languages = pytesseract.get_languages()
+            logger.info(f"Available languages: {languages}")
+            
+            # Проверяем наличие необходимых языков
+            required_langs = ['rus', 'deu', 'eng', 'ukr']
+            missing_langs = [lang for lang in required_langs if lang not in languages]
+            
+            if missing_langs:
+                logger.warning(f"Missing language packs: {missing_langs}")
+                # Используем только доступные языки
+                available_langs = [lang for lang in required_langs if lang in languages]
+                if available_langs:
+                    self.tesseract_config = f'--oem 3 --psm 6 -l {"+".join(available_langs)}'
+                    self.tesseract_config_document = f'--oem 3 --psm 4 -l {"+".join(available_langs)}'
+                    self.tesseract_config_single_block = f'--oem 3 --psm 6 -l {"+".join(available_langs)}'
+                    logger.info(f"Using available languages: {available_langs}")
+                else:
+                    # Fallback to English only
+                    self.tesseract_config = '--oem 3 --psm 6 -l eng'
+                    self.tesseract_config_document = '--oem 3 --psm 4 -l eng'
+                    self.tesseract_config_single_block = '--oem 3 --psm 6 -l eng'
+                    logger.warning("Fallback to English only OCR")
+            else:
+                logger.info("All required language packs are available")
+                
+            return True
+            
+        except Exception as e:
+            logger.error(f"Tesseract check failed: {e}")
+            return False
     
     def _check_llm_vision_availability(self) -> bool:
         """Проверка доступности LLM Vision через modern_llm_manager"""

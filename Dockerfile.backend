@@ -10,6 +10,7 @@ RUN apt-get update && apt-get install -y \
     tesseract-ocr-deu \
     tesseract-ocr-rus \
     tesseract-ocr-eng \
+    tesseract-ocr-ukr \
     libtesseract-dev \
     libgl1-mesa-glx \
     libglib2.0-0 \
@@ -19,19 +20,26 @@ RUN apt-get update && apt-get install -y \
     libgomp1 \
     wget \
     curl \
+    poppler-utils \
     && rm -rf /var/lib/apt/lists/*
+
+# Ensure tesseract is in PATH
+ENV PATH="/usr/bin:${PATH}"
+
+# Проверяем установку tesseract
+RUN tesseract --version
 
 # Обновляем pip до последней версии
 RUN pip install --upgrade pip
 
 # Копируем файлы зависимостей
-COPY requirements.txt .
+COPY backend/requirements.txt .
 
 # Устанавливаем стандартные зависимости
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Копируем исходный код
-COPY . .
+# Копируем backend код
+COPY backend/ .
 
 # Устанавливаем emergentintegrations во время сборки с обработкой ошибок
 RUN pip install emergentintegrations --extra-index-url https://d33sy5i8bnduwe.cloudfront.net/simple/ --trusted-host d33sy5i8bnduwe.cloudfront.net || \
@@ -44,8 +52,10 @@ RUN python -c "from emergentintegrations.llm.chat import LlmChat; print('emergen
 # Создаем директорию для SQLite базы данных
 RUN mkdir -p /app/data
 
-# Устанавливаем переменную окружения для базы данных
+# Устанавливаем переменные окружения
 ENV SQLITE_DB_PATH=/app/data/german_ai.db
+ENV TESSERACT_AVAILABLE=true
+ENV TESSERACT_VERSION=5.3.0
 
 # Делаем start.sh исполняемым
 RUN chmod +x start.sh

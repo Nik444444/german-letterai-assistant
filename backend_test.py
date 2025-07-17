@@ -1143,6 +1143,13 @@ class BackendTester:
             await self.test_api_key_update_new_field_names()     # Test API key update with new field names
             await self.test_dependencies_installation()          # Test required dependencies
             
+            # NEW TESTS FOR IMPROVED OCR SERVICE
+            await self.test_improved_ocr_service_status()        # Test new OCR status endpoint
+            await self.test_ocr_methods_availability()           # Test OCR methods availability
+            await self.test_analyze_file_ocr_integration()       # Test analyze-file OCR integration
+            await self.test_ocr_service_no_tesseract_dependency() # Test no tesseract dependency
+            await self.test_ocr_logging_and_fallback()           # Test OCR logging and fallback
+            
         except Exception as e:
             logger.error(f"Test execution error: {e}")
             self.log_test_result("Test execution", False, f"Critical error: {e}")

@@ -4,6 +4,7 @@ services:
   - type: web
     name: german-letterai-assistant
     env: docker
+    runtime: docker
     region: oregon
     plan: starter
     dockerfilePath: ./Dockerfile

@@ -19,7 +19,15 @@ from google.oauth2 import id_token
 import hashlib
 import base64
 
-# Load database and LLM Manager
+ROOT_DIR = Path(__file__).parent
+load_dotenv(ROOT_DIR / '.env')
+
+# CRITICAL FIX: Ensure tesseract is in PATH BEFORE importing OCR services
+os.environ['PATH'] = '/usr/bin:/usr/local/bin:' + os.environ.get('PATH', '')
+os.environ['TESSERACT_AVAILABLE'] = 'true'
+os.environ['TESSERACT_VERSION'] = '5.3.0'
+
+# Load database and LLM Manager (AFTER PATH setup)
 from database import db
 from llm_manager import llm_manager
 from modern_llm_manager import modern_llm_manager
@@ -30,14 +38,6 @@ from alternative_ocr_service import alternative_ocr_service
 from improved_ocr_service import improved_ocr_service
 from google_api_key_service import google_api_service
 from super_analysis_engine import super_analysis_engine
-
-ROOT_DIR = Path(__file__).parent
-load_dotenv(ROOT_DIR / '.env')
-
-# CRITICAL FIX: Ensure tesseract is in PATH for production
-os.environ['PATH'] = '/usr/bin:/usr/local/bin:' + os.environ.get('PATH', '')
-os.environ['TESSERACT_AVAILABLE'] = 'true'
-os.environ['TESSERACT_VERSION'] = '5.3.0'
 
 # Configure logging
 logging.basicConfig(

@@ -443,11 +443,26 @@ class ImprovedOCRService:
     async def extract_text_from_image(self, image_path: str, user_providers: List = None) -> str:
         """
         Извлечение текста из изображения с использованием нескольких методов
+        Приоритет: Tesseract OCR (основной) -> LLM Vision -> Online OCR APIs
         """
         try:
             logger.info(f"Starting image OCR for: {image_path}")
             
-            # Метод 1: LLM Vision (основной метод)
+            # Метод 1: Tesseract OCR (основной метод)
+            if self.tesseract_available:
+                try:
+                    text = await self.extract_text_with_tesseract(image_path)
+                    if text and len(text.strip()) > 10:
+                        logger.info("✅ Tesseract OCR successful")
+                        return text
+                    else:
+                        logger.info("Tesseract returned minimal text, trying fallback methods")
+                except Exception as e:
+                    logger.warning(f"Tesseract OCR failed: {e}")
+            else:
+                logger.info("Tesseract not available, using fallback methods")
+            
+            # Метод 2: LLM Vision (fallback)
             if self.llm_vision_available or user_providers:
                 try:
                     text = await self.extract_text_with_llm_vision(image_path, user_providers)
@@ -455,13 +470,13 @@ class ImprovedOCRService:
                         logger.info("✅ LLM Vision OCR successful")
                         return text
                     else:
-                        logger.info("LLM Vision returned minimal text, trying fallback methods")
+                        logger.info("LLM Vision returned minimal text, trying other fallback methods")
                 except Exception as e:
                     logger.warning(f"LLM Vision OCR failed: {e}")
             else:
-                logger.info("LLM Vision not available, using fallback methods")
+                logger.info("LLM Vision not available, trying online OCR")
             
-            # Метод 2: OCR.space API
+            # Метод 3: OCR.space API
             if self.ocr_space_available:
                 try:
                     text = await self.extract_text_with_ocr_space(image_path)
@@ -471,7 +486,7 @@ class ImprovedOCRService:
                 except Exception as e:
                     logger.warning(f"OCR.space API failed: {e}")
             
-            # Метод 3: Azure Computer Vision
+            # Метод 4: Azure Computer Vision
             if self.azure_vision_available:
                 try:
                     text = await self.extract_text_with_azure_vision(image_path)
@@ -481,7 +496,7 @@ class ImprovedOCRService:
                 except Exception as e:
                     logger.warning(f"Azure Vision API failed: {e}")
             
-            # Метод 4: Последний fallback - передать изображение в LLM с базовым запросом
+            # Метод 5: Последний fallback - передать изображение в LLM с базовым запросом
             if (self.llm_vision_available or user_providers):
                 try:
                     logger.info("Trying LLM Vision fallback with simple prompt")

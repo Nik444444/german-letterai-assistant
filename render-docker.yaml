@@ -1,0 +1,48 @@
+services:
+  # Backend сервис - упрощенный Docker подход
+  - type: web
+    name: german-ai-backend
+    env: docker
+    region: oregon
+    plan: starter
+    dockerfilePath: ./Dockerfile.backend
+    dockerContext: .
+    buildCommand: ""
+    startCommand: "uvicorn server:app --host 0.0.0.0 --port 8001"
+    envVars:
+      - key: JWT_SECRET_KEY
+        generateValue: true
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: SQLITE_DB_PATH
+        value: /app/data/german_ai.db
+      - key: TESSERACT_AVAILABLE
+        value: true
+      - key: TESSERACT_VERSION
+        value: 5.3.0
+      - key: PATH
+        value: /usr/bin:/usr/local/bin:/opt/render/project/src/.venv/bin:/home/render/.bun/bin:/opt/render/project/nodes/node-22.16.0/bin:/opt/render/project/src/.venv/bin:/opt/render/project/poetry/bin:/opt/render/project/uv/bin:/home/render/.python-poetry/bin:/usr/local/cargo/bin:/opt/render/project/.cargo/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/home/render/bin
+    
+  # Frontend сервис
+  - type: web
+    name: german-ai-frontend
+    env: docker
+    region: oregon
+    plan: starter
+    dockerfilePath: ./frontend/Dockerfile
+    dockerContext: ./frontend
+    buildCommand: ""
+    startCommand: ""
+    envVars:
+      - key: REACT_APP_BACKEND_URL
+        value: https://german-letterai-assistant.onrender.com
+      - key: REACT_APP_GOOGLE_CLIENT_ID
+        value: 364877380148-nhlcauaonsvm5j0feh5fltn3qsa6tffm.apps.googleusercontent.com

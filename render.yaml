@@ -6,8 +6,11 @@ services:
     region: oregon
     plan: starter
     buildCommand: |
-      # Устанавливаем системные пакеты
-      apt-get update && apt-get install -y \
+      set -euo pipefail
+      echo "🔧 RENDER BUILD START: Installing system dependencies for Tesseract OCR..."
+      
+      # Обновляем пакеты и устанавливаем tesseract
+      apt-get update -y && apt-get install -y \
         tesseract-ocr \
         tesseract-ocr-deu \
         tesseract-ocr-rus \
@@ -21,17 +24,30 @@ services:
         libxrender-dev \
         libgomp1 \
         poppler-utils \
-        && echo "✅ System packages installed" \
-        && tesseract --version \
-        && echo "✅ Tesseract version confirmed" \
-        && pip install --upgrade pip \
-        && pip install -r backend/requirements.txt \
-        && echo "✅ Python packages installed" \
-        && pip install emergentintegrations --extra-index-url https://d33sy5i8bnduwe.cloudfront.net/simple/ --trusted-host d33sy5i8bnduwe.cloudfront.net || echo "⚠️ emergentintegrations installation failed, will use fallback" \
-        && python -c "import pytesseract; print('✅ pytesseract OK')" \
-        && python -c "import cv2; print('✅ opencv OK')" \
-        && python -c "import PIL; print('✅ Pillow OK')" \
-        && echo "✅ Build completed successfully"
+        && echo "✅ System packages installed successfully"
+      
+      # Проверяем tesseract
+      tesseract --version
+      tesseract --list-langs
+      echo "✅ Tesseract verification complete"
+      
+      # Обновляем pip и устанавливаем зависимости
+      pip install --upgrade pip
+      pip install -r backend/requirements.txt
+      echo "✅ Python packages installed"
+      
+      # Устанавливаем emergentintegrations с обработкой ошибок
+      pip install emergentintegrations --extra-index-url https://d33sy5i8bnduwe.cloudfront.net/simple/ --trusted-host d33sy5i8bnduwe.cloudfront.net || echo "⚠️ emergentintegrations installation failed, will use fallback"
+      
+      # Проверяем критические зависимости
+      python -c "import pytesseract; print('✅ pytesseract OK')" || (echo "❌ pytesseract failed" && exit 1)
+      python -c "import cv2; print('✅ opencv OK')" || (echo "❌ opencv failed" && exit 1)
+      python -c "import PIL; print('✅ Pillow OK')" || (echo "❌ Pillow failed" && exit 1)
+      
+      # Создаем директорию для данных
+      mkdir -p backend/data
+      
+      echo "🎉 BUILD COMPLETED SUCCESSFULLY"
     startCommand: cd backend && uvicorn server:app --host 0.0.0.0 --port $PORT --workers 1
     envVars:
       - key: JWT_SECRET_KEY

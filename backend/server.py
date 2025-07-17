@@ -37,6 +37,7 @@ load_dotenv(ROOT_DIR / '.env')
 # CRITICAL FIX: Ensure tesseract is in PATH for production
 os.environ['PATH'] = '/usr/bin:/usr/local/bin:' + os.environ.get('PATH', '')
 os.environ['TESSERACT_AVAILABLE'] = 'true'
+os.environ['TESSERACT_VERSION'] = '5.3.0'
 
 # Configure logging
 logging.basicConfig(

@@ -273,14 +273,18 @@ class ImprovedOCRService:
             logger.info(f"Starting image OCR for: {image_path}")
             
             # Метод 1: LLM Vision (основной метод)
-            if self.llm_vision_available:
+            if self.llm_vision_available or user_providers:
                 try:
                     text = await self.extract_text_with_llm_vision(image_path, user_providers)
                     if text and len(text.strip()) > 20:
                         logger.info("✅ LLM Vision OCR successful")
                         return text
+                    else:
+                        logger.info("LLM Vision returned minimal text, trying fallback methods")
                 except Exception as e:
                     logger.warning(f"LLM Vision OCR failed: {e}")
+            else:
+                logger.info("LLM Vision not available, using fallback methods")
             
             # Метод 2: OCR.space API
             if self.ocr_space_available:

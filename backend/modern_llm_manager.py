@@ -262,6 +262,39 @@ class ModernLLMManager:
     async def test_api_key(self, provider_type: str, api_key: str) -> bool:
         """Тестирование API ключа"""
         try:
+            # Если emergentintegrations недоступен, пытаемся провести базовую проверку
+            if not EMERGENT_INTEGRATIONS_AVAILABLE:
+                logger.warning(f"emergentintegrations not available, using fallback API key validation for {provider_type}")
+                
+                # Базовая проверка формата API ключа
+                if provider_type.lower() == 'gemini':
+                    # Gemini API keys обычно начинаются с 'AIza'
+                    if api_key and api_key.startswith('AIza') and len(api_key) > 30:
+                        logger.info(f"Gemini API key format appears valid (fallback validation)")
+                        return True
+                    else:
+                        logger.warning(f"Gemini API key format invalid: {api_key[:10]}...")
+                        return False
+                elif provider_type.lower() == 'openai':
+                    # OpenAI API keys обычно начинаются с 'sk-'
+                    if api_key and api_key.startswith('sk-') and len(api_key) > 40:
+                        logger.info(f"OpenAI API key format appears valid (fallback validation)")
+                        return True
+                    else:
+                        logger.warning(f"OpenAI API key format invalid")
+                        return False
+                elif provider_type.lower() == 'anthropic':
+                    # Anthropic API keys обычно начинаются с 'sk-ant-'
+                    if api_key and api_key.startswith('sk-ant-') and len(api_key) > 40:
+                        logger.info(f"Anthropic API key format appears valid (fallback validation)")
+                        return True
+                    else:
+                        logger.warning(f"Anthropic API key format invalid")
+                        return False
+                else:
+                    return False
+            
+            # Если emergentintegrations доступен, выполняем полное тестирование
             if provider_type.lower() == 'gemini':
                 provider = ModernGeminiProvider(api_key)
             elif provider_type.lower() == 'openai':

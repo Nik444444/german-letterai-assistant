@@ -44,8 +44,20 @@ class ImprovedOCRService:
     def _check_llm_vision_availability(self) -> bool:
         """Проверка доступности LLM Vision через modern_llm_manager"""
         try:
+            # Проверяем, есть ли хотя бы один активный системный провайдер
             providers = modern_llm_manager.get_available_providers()
-            return any(providers.values())
+            has_system_providers = any(providers.values())
+            
+            # Также проверяем, есть ли хотя бы одна модель в статусе провайдеров
+            status = modern_llm_manager.get_provider_status()
+            has_configured_providers = len(status) > 0
+            
+            # LLM Vision доступен если есть конфигурированные провайдеры (даже если не активны)
+            # потому что пользователи могут передавать свои API ключи
+            available = has_system_providers or has_configured_providers
+            
+            logger.info(f"LLM Vision availability check: system_providers={has_system_providers}, configured_providers={has_configured_providers}, available={available}")
+            return available
         except Exception as e:
             logger.warning(f"LLM Vision check failed: {e}")
             return False

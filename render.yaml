@@ -44,8 +44,11 @@ services:
       python -c "import cv2; print('✅ opencv OK')" || (echo "❌ opencv failed" && exit 1)
       python -c "import PIL; print('✅ Pillow OK')" || (echo "❌ Pillow failed" && exit 1)
       
-      # Создаем директорию для данных
-      mkdir -p backend/data
+      # Проверяем emergentintegrations
+      python -c "import emergentintegrations; print('✅ emergentintegrations OK')" || echo "⚠️ emergentintegrations not available, will use fallback"
+      
+      # Создаем директорию для данных в правильном месте
+      mkdir -p /opt/render/project/src/backend/data
       
       echo "🎉 BUILD COMPLETED SUCCESSFULLY"
     startCommand: cd backend && uvicorn server:app --host 0.0.0.0 --port $PORT --workers 1

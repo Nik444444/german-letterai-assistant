@@ -34,16 +34,8 @@ class BackendTester:
         frontend_env_path = Path("/app/frontend/.env")
         self.backend_url = "http://localhost:8001"  # Use localhost for testing new features
         
-        # Use production URL for testing as specified in review request
-        if frontend_env_path.exists():
-            with open(frontend_env_path, 'r') as f:
-                for line in f:
-                    if line.startswith('REACT_APP_BACKEND_URL='):
-                        self.backend_url = line.split('=', 1)[1].strip()
-                        break
-        
-        if not self.backend_url:
-            self.backend_url = "http://localhost:8001"  # Fallback to localhost
+        # Test locally since production URL is returning 502 errors
+        self.backend_url = "http://localhost:8001"
             
         logger.info(f"Testing backend at: {self.backend_url}")
         

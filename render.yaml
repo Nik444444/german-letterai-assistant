@@ -1,0 +1,43 @@
+services:
+  # Backend сервис
+  - type: web
+    name: german-ai-backend
+    env: docker
+    dockerfilePath: ./Dockerfile.backend
+    dockerContext: ./backend
+    plan: starter
+    buildCommand: ""
+    startCommand: "./start.sh"
+    envVars:
+      - key: JWT_SECRET_KEY
+        generateValue: true
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: SQLITE_DB_PATH
+        value: /app/data/german_ai.db
+    
+  # Frontend сервис
+  - type: web
+    name: german-ai-frontend
+    env: docker
+    dockerfilePath: ./frontend/Dockerfile
+    dockerContext: ./frontend
+    plan: starter
+    buildCommand: ""
+    startCommand: ""
+    envVars:
+      - key: REACT_APP_BACKEND_URL
+        value: https://german-letterai-assistant.onrender.com
+      - key: REACT_APP_GOOGLE_CLIENT_ID
+        value: 364877380148-nhlcauaonsvm5j0feh5fltn3qsa6tffm.apps.googleusercontent.com
+
+# Необходимые базы данных (SQLite файл будет храниться локально в контейнере)
+# Для продакшн рекомендуется использовать PostgreSQL, но SQLite подойдет для демо

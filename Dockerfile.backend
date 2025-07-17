@@ -1,0 +1,38 @@
+# Используем официальный Python образ
+FROM python:3.11-slim
+
+# Устанавливаем рабочую директорию
+WORKDIR /app
+
+# Обновляем pip до последней версии
+RUN pip install --upgrade pip
+
+# Копируем файлы зависимостей
+COPY requirements.txt .
+
+# Устанавливаем стандартные зависимости
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Копируем исходный код
+COPY . .
+
+# Устанавливаем emergentintegrations во время сборки
+RUN pip install emergentintegrations --extra-index-url https://d33sy5i8bnduwe.cloudfront.net/simple/ --trusted-host d33sy5i8bnduwe.cloudfront.net
+
+# Проверяем что emergentintegrations установлен
+RUN python -c "from emergentintegrations.llm.chat import LlmChat; print('emergentintegrations installed successfully')"
+
+# Создаем директорию для SQLite базы данных
+RUN mkdir -p /app/data
+
+# Устанавливаем переменную окружения для базы данных
+ENV SQLITE_DB_PATH=/app/data/german_ai.db
+
+# Делаем start.sh исполняемым
+RUN chmod +x start.sh
+
+# Открываем порт 8001
+EXPOSE 8001
+
+# Запускаем приложение через start.sh
+CMD ["./start.sh"]

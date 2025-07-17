@@ -1051,34 +1051,38 @@ class BackendTester:
             data
         )
     
-    async def test_ocr_service_no_tesseract_dependency(self):
-        """Test that OCR service works without tesseract dependency"""
-        logger.info("=== Testing OCR Service No Tesseract Dependency ===")
+    async def test_ocr_service_tesseract_dependency(self):
+        """Test that OCR service works WITH tesseract dependency (as PRIMARY method)"""
+        logger.info("=== Testing OCR Service WITH Tesseract Dependency ===")
         
         success, data, error = await self.make_request("GET", "/api/ocr-status")
         
         if success and isinstance(data, dict):
-            # Check main response
-            tesseract_not_required = data.get("tesseract_required") is False
+            # Check main response - should show tesseract as required and primary
+            tesseract_required = data.get("tesseract_required") is not False  # Should be True or not explicitly False
             production_ready = data.get("production_ready") is True
             
             # Check OCR service details
             ocr_service = data.get("ocr_service", {})
-            service_tesseract_dependency = ocr_service.get("tesseract_dependency") is False
+            service_tesseract_dependency = ocr_service.get("tesseract_dependency") is True  # Should be TRUE
             service_production_ready = ocr_service.get("production_ready") is True
             
-            # Check that primary method is not tesseract-based
+            # Check that primary method is tesseract-based
             primary_method = ocr_service.get("primary_method", "")
-            primary_not_tesseract = "tesseract" not in primary_method.lower()
+            primary_is_tesseract = primary_method == "tesseract_ocr"
+            
+            # Check tesseract version
+            tesseract_version = ocr_service.get("tesseract_version", "")
+            has_correct_version = tesseract_version == "5.3.0"
             
             self.log_test_result(
-                "OCR Service - No tesseract dependency",
-                tesseract_not_required and production_ready and service_tesseract_dependency and service_production_ready and primary_not_tesseract,
-                f"Tesseract required: {data.get('tesseract_required')}, Production ready: {data.get('production_ready')}, Primary method: {primary_method}",
+                "OCR Service - WITH tesseract dependency (PRIMARY method)",
+                production_ready and service_tesseract_dependency and service_production_ready and primary_is_tesseract and has_correct_version,
+                f"Tesseract dependency: {service_tesseract_dependency}, Production ready: {production_ready}, Primary method: {primary_method}, Version: {tesseract_version}",
                 data
             )
         else:
-            self.log_test_result("OCR Service - No tesseract dependency", False, f"Error: {error}", data)
+            self.log_test_result("OCR Service - WITH tesseract dependency (PRIMARY method)", False, f"Error: {error}", data)
     
     async def test_ocr_logging_and_fallback(self):
         """Test OCR service logging and fallback mechanisms"""

@@ -23,12 +23,6 @@ RUN apt-get update && apt-get install -y \
     poppler-utils \
     && rm -rf /var/lib/apt/lists/*
 
-# Ensure tesseract is in PATH
-ENV PATH="/usr/bin:${PATH}"
-
-# Проверяем установку tesseract
-RUN tesseract --version
-
 # Обновляем pip до последней версии
 RUN pip install --upgrade pip
 
@@ -45,23 +39,27 @@ COPY backend/ .
 RUN pip install emergentintegrations --extra-index-url https://d33sy5i8bnduwe.cloudfront.net/simple/ --trusted-host d33sy5i8bnduwe.cloudfront.net || \
     echo "Warning: emergentintegrations installation failed, application will run in fallback mode"
 
-# Проверяем что emergentintegrations установлен (не критично для работы)
-RUN python -c "from emergentintegrations.llm.chat import LlmChat; print('emergentintegrations installed successfully')" || \
-    echo "Warning: emergentintegrations not available, fallback mode will be used"
-
 # Создаем директорию для SQLite базы данных
 RUN mkdir -p /app/data
+
+# Проверяем установку tesseract и путь
+RUN which tesseract || echo "tesseract not found"
+RUN tesseract --version || echo "tesseract version check failed"
+RUN ls -la /usr/bin/tesseract || echo "tesseract binary not found"
 
 # Устанавливаем переменные окружения
 ENV SQLITE_DB_PATH=/app/data/german_ai.db
 ENV TESSERACT_AVAILABLE=true
 ENV TESSERACT_VERSION=5.3.0
+ENV PATH="/usr/bin:/usr/local/bin:$PATH"
 
-# Делаем start.sh исполняемым
-RUN chmod +x start.sh
+# Проверяем что все зависимости работают
+RUN python -c "import pytesseract; print('pytesseract OK')" || echo "pytesseract import failed"
+RUN python -c "import cv2; print('opencv OK')" || echo "opencv import failed"
+RUN python -c "import PIL; print('Pillow OK')" || echo "Pillow import failed"
 
 # Открываем порт 8001
 EXPOSE 8001
 
-# Запускаем приложение через start.sh
-CMD ["./start.sh"]
+# Запускаем приложение напрямую
+CMD ["uvicorn", "server:app", "--host", "0.0.0.0", "--port", "8001"]

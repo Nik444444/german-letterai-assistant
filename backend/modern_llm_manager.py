@@ -65,7 +65,16 @@ class ModernGeminiProvider(ModernLLMProvider):
     async def generate_content(self, prompt: str, image_path: Optional[str] = None) -> str:
         try:
             if not EMERGENT_INTEGRATIONS_AVAILABLE:
-                raise Exception("emergentintegrations not available - using fallback")
+                # Fallback mode - возвращаем информативное сообщение
+                logger.warning("emergentintegrations not available - using fallback mode")
+                fallback_message = (
+                    "⚠️ Система работает в режиме ограниченной функциональности. "
+                    "Для полного анализа документов необходимо установить emergentintegrations. "
+                    "Пожалуйста, обратитесь к администратору для настройки системы."
+                )
+                if image_path:
+                    fallback_message += "\n\n📄 Обнаружен файл изображения, но анализ изображений недоступен в текущем режиме."
+                return fallback_message
                 
             if not self.api_key:
                 raise Exception("Gemini API key not configured")
@@ -96,6 +105,12 @@ class ModernGeminiProvider(ModernLLMProvider):
 
         except Exception as e:
             logger.error(f"Modern Gemini generation error: {e}")
+            if "emergentintegrations not available" in str(e):
+                return (
+                    "⚠️ Система работает в режиме ограниченной функциональности. "
+                    "Для полного анализа документов необходимо установить emergentintegrations. "
+                    "Пожалуйста, обратитесь к администратору для настройки системы."
+                )
             raise Exception(f"Gemini error: {str(e)}")
 
     def is_available(self) -> bool:

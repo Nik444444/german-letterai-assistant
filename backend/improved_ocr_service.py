@@ -534,6 +534,7 @@ class ImprovedOCRService:
     async def extract_text_from_pdf(self, pdf_path: str, user_providers: List = None) -> str:
         """
         Извлечение текста из PDF с использованием нескольких методов
+        Приоритет: Прямое извлечение -> Tesseract OCR -> LLM Vision -> Online OCR
         """
         try:
             logger.info(f"Starting PDF OCR for: {pdf_path}")
@@ -544,7 +545,7 @@ class ImprovedOCRService:
                 logger.info("✅ Direct PDF text extraction successful")
                 return direct_text
             
-            # Метод 2: Конвертация PDF в изображения и OCR
+            # Метод 2: Конвертация PDF в изображения и OCR с Tesseract
             logger.info("Direct PDF extraction failed, converting to images...")
             
             try:
@@ -559,10 +560,21 @@ class ImprovedOCRService:
                         temp_img_path = temp_img.name
                     
                     try:
-                        # Извлекаем текст из изображения страницы
+                        # Сначала пробуем Tesseract OCR
+                        if self.tesseract_available:
+                            try:
+                                page_text = await self.extract_text_with_tesseract(temp_img_path)
+                                if page_text and len(page_text.strip()) > 10:
+                                    extracted_text += f"--- Страница {i+1} ---\n{page_text}\n\n"
+                                    continue
+                            except Exception as e:
+                                logger.warning(f"Tesseract OCR failed for page {i+1}: {e}")
+                        
+                        # Fallback к извлечению текста из изображения (включая LLM Vision)
                         page_text = await self.extract_text_from_image(temp_img_path, user_providers)
                         if page_text and len(page_text.strip()) > 10:
                             extracted_text += f"--- Страница {i+1} ---\n{page_text}\n\n"
+                            
                     finally:
                         # Удаляем временный файл
                         if os.path.exists(temp_img_path):

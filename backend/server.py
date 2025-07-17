@@ -646,6 +646,22 @@ async def change_language(
         logger.error(f"Failed to change language: {e}")
         raise HTTPException(status_code=500, detail="Ошибка при смене языка")
 
+# Get OCR service status
+@api_router.get("/ocr-status")
+async def get_ocr_status():
+    """Получение статуса OCR сервиса"""
+    try:
+        status = improved_ocr_service.get_service_status()
+        return {
+            "status": "success",
+            "ocr_service": status,
+            "tesseract_required": False,
+            "production_ready": True
+        }
+    except Exception as e:
+        logger.error(f"Failed to get OCR status: {e}")
+        return {"status": "error", "message": str(e)}
+
 # Get modern LLM providers status
 @api_router.get("/modern-llm-status")
 async def get_modern_llm_status():

@@ -102,7 +102,23 @@
 # Testing Data - Main Agent and testing sub agent both should log testing data below this section
 #====================================================================================================
 
-user_problem_statement: "посмотри мой телеграмм мини апп и установи ,переустанови ,снеси и заново установи тесеракт ОСР как глаывный инструмент анализа текста из фото в инструменте анализ документов ,это важно сделать ,чтобы тесеракт точно установился или переустановился ,проверь все зависимоти и файлы которые могут повлять на неуспешную установку и исправь все чтобы тесеракт оср работал корректно и устанавливался на мой бекенд и фронтенд"
+user_problem_statement: "посмотри мини апп телеграм в репозитории ,при беплое бекенда на рендере ошибка: tesseract not found in PATH, emergentintegrations not available, система работает в fallback режиме. Нужно исправить render.yaml для правильной установки tesseract на этапе сборки, а не runtime."
+
+backend:
+  - task: "Исправление проблемы деплоя на Render - установка Tesseract на этапе сборки"
+    implemented: true
+    working: true
+    file: "render.yaml, backend/start.sh"
+    stuck_count: 0
+    priority: "critical"
+    needs_retesting: true
+    status_history:
+      - working: false
+        agent: "main"
+        comment: "ПРОБЛЕМА ДЕПЛОЯ RENDER: При развертывании на Render возникают ошибки: 1) tesseract not found in PATH 2) emergentintegrations not available 3) система работает в fallback режиме 4) apt-get не может установить tesseract во время runtime из-за отсутствия прав доступа. Render использует старый подход с start.sh вместо Python buildpack."
+      - working: true
+        agent: "main"
+        comment: "ИСПРАВЛЕНО: 1) Обновлен render.yaml для правильной установки tesseract на этапе сборки (buildCommand) с проверкой зависимостей 2) Упрощен start.sh - убраны попытки установки пакетов во время runtime, оставлена только диагностика 3) Добавлена проверка критических зависимостей в buildCommand 4) Исправлен startCommand для прямого запуска uvicorn без start.sh 5) Локально протестировано - tesseract 5.3.0 работает корректно как основной метод OCR 6) Все языковые пакеты (deu, eng, rus, ukr) установлены и работают"
 
 backend:
   - task: "Полная переустановка и настройка Tesseract OCR как основного инструмента анализа"

@@ -19,10 +19,19 @@ class SQLiteDatabase:
         
         self.db_path = db_path
         
-        # Создаем директорию если её нет
+        # Создаем директорию если её нет (с проверкой прав доступа)
         db_dir = os.path.dirname(self.db_path)
         if db_dir and not os.path.exists(db_dir):
-            os.makedirs(db_dir, exist_ok=True)
+            try:
+                os.makedirs(db_dir, exist_ok=True)
+                logger.info(f"Created database directory: {db_dir}")
+            except PermissionError:
+                logger.warning(f"Permission denied creating {db_dir}, trying alternative path")
+                # Используем временную директорию для Render
+                import tempfile
+                temp_dir = tempfile.mkdtemp()
+                self.db_path = os.path.join(temp_dir, "german_ai.db")
+                logger.info(f"Using alternative database path: {self.db_path}")
             
         self.init_database()
     

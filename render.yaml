@@ -1,57 +1,15 @@
+# Render.yaml для 100% работы Tesseract OCR через Docker
 services:
-  # Backend сервис - используем Python buildpack для лучшей совместимости
+  # Backend сервис с полной Docker конфигурацией для 100% работы Tesseract
   - type: web
-    name: german-ai-backend
-    env: python
+    name: german-letterai-assistant
+    env: docker
     region: oregon
     plan: starter
-    buildCommand: |
-      set -euo pipefail
-      echo "🔧 RENDER BUILD START: Installing system dependencies for Tesseract OCR..."
-      
-      # Обновляем пакеты и устанавливаем tesseract
-      apt-get update -y && apt-get install -y \
-        tesseract-ocr \
-        tesseract-ocr-deu \
-        tesseract-ocr-rus \
-        tesseract-ocr-eng \
-        tesseract-ocr-ukr \
-        libtesseract-dev \
-        libgl1-mesa-glx \
-        libglib2.0-0 \
-        libsm6 \
-        libxext6 \
-        libxrender-dev \
-        libgomp1 \
-        poppler-utils \
-        && echo "✅ System packages installed successfully"
-      
-      # Проверяем tesseract
-      tesseract --version
-      tesseract --list-langs
-      echo "✅ Tesseract verification complete"
-      
-      # Обновляем pip и устанавливаем зависимости
-      pip install --upgrade pip
-      pip install -r backend/requirements.txt
-      echo "✅ Python packages installed"
-      
-      # Устанавливаем emergentintegrations с обработкой ошибок
-      pip install emergentintegrations --extra-index-url https://d33sy5i8bnduwe.cloudfront.net/simple/ --trusted-host d33sy5i8bnduwe.cloudfront.net || echo "⚠️ emergentintegrations installation failed, will use fallback"
-      
-      # Проверяем критические зависимости
-      python -c "import pytesseract; print('✅ pytesseract OK')" || (echo "❌ pytesseract failed" && exit 1)
-      python -c "import cv2; print('✅ opencv OK')" || (echo "❌ opencv failed" && exit 1)
-      python -c "import PIL; print('✅ Pillow OK')" || (echo "❌ Pillow failed" && exit 1)
-      
-      # Проверяем emergentintegrations
-      python -c "import emergentintegrations; print('✅ emergentintegrations OK')" || echo "⚠️ emergentintegrations not available, will use fallback"
-      
-      # Создаем директорию для данных в правильном месте
-      mkdir -p /opt/render/project/src/backend/data
-      
-      echo "🎉 BUILD COMPLETED SUCCESSFULLY"
-    startCommand: cd backend && uvicorn server:app --host 0.0.0.0 --port $PORT --workers 1
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    buildCommand: ""
+    startCommand: ""
     envVars:
       - key: JWT_SECRET_KEY
         generateValue: true
@@ -66,15 +24,29 @@ services:
       - key: ANTHROPIC_API_KEY
         sync: false
       - key: SQLITE_DB_PATH
-        value: /opt/render/project/src/backend/data/german_ai.db
+        value: /app/backend/data/german_ai.db
       - key: TESSERACT_AVAILABLE
         value: true
       - key: TESSERACT_VERSION
         value: 5.3.0
+      - key: TESSDATA_PREFIX
+        value: /usr/share/tesseract-ocr/5/tessdata
       - key: PATH
-        value: /usr/bin:/usr/local/bin:/opt/render/project/src/.venv/bin:/home/render/.bun/bin:/opt/render/project/nodes/node-22.16.0/bin:/opt/render/project/src/.venv/bin:/opt/render/project/poetry/bin:/opt/render/project/uv/bin:/home/render/.python-poetry/bin:/usr/local/cargo/bin:/opt/render/project/.cargo/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/home/render/bin
-    
-  # Frontend сервис
+        value: /usr/bin:/usr/local/bin:/app/.venv/bin
+      - key: PYTHONPATH
+        value: /app/backend
+      - key: OCR_SPACE_API_KEY
+        sync: false
+      - key: AZURE_COMPUTER_VISION_KEY
+        sync: false
+      - key: AZURE_COMPUTER_VISION_ENDPOINT
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+  
+  # Frontend сервис (отдельно)
   - type: web
     name: german-ai-frontend
     env: docker

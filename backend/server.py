@@ -714,15 +714,25 @@ async def analyze_file_authenticated(
             temp_file_path = temp_file.name
 
         try:
-            # Пробуем использовать альтернативный OCR сервис как основной
+            # Используем улучшенный OCR сервис как основной метод
             try:
-                extracted_text, processing_method = alternative_ocr_service.process_document(temp_file_path, file.content_type or "")
-                logger.info(f"Alternative OCR processing method: {processing_method}, extracted text length: {len(extracted_text)}")
+                extracted_text, processing_method = await improved_ocr_service.process_document(
+                    temp_file_path, 
+                    file.content_type or "",
+                    user_providers
+                )
+                logger.info(f"Improved OCR processing method: {processing_method}, extracted text length: {len(extracted_text)}")
             except Exception as ocr_error:
-                logger.warning(f"Alternative OCR failed, falling back to document_processor: {ocr_error}")
-                # Fallback к основному document_processor
-                extracted_text, processing_method = document_processor.process_document(temp_file_path, file.content_type or "")
-                logger.info(f"Fallback processing method: {processing_method}, extracted text length: {len(extracted_text)}")
+                logger.warning(f"Improved OCR failed, falling back to alternative OCR: {ocr_error}")
+                # Fallback к альтернативному OCR сервису
+                try:
+                    extracted_text, processing_method = alternative_ocr_service.process_document(temp_file_path, file.content_type or "")
+                    logger.info(f"Alternative OCR processing method: {processing_method}, extracted text length: {len(extracted_text)}")
+                except Exception as alt_ocr_error:
+                    logger.warning(f"Alternative OCR failed, falling back to document_processor: {alt_ocr_error}")
+                    # Последний fallback к основному document_processor
+                    extracted_text, processing_method = document_processor.process_document(temp_file_path, file.content_type or "")
+                    logger.info(f"Fallback processing method: {processing_method}, extracted text length: {len(extracted_text)}")
             
             # Проверяем качество извлеченного текста
             if not extracted_text or len(extracted_text.strip()) < 10:

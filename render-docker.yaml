@@ -1,14 +1,15 @@
+# Render.yaml для 100% работы Tesseract OCR через Docker
 services:
-  # Backend сервис - упрощенный Docker подход
+  # Backend сервис с полной Docker конфигурацией
   - type: web
-    name: german-ai-backend
+    name: german-letterai-assistant
     env: docker
     region: oregon
     plan: starter
-    dockerfilePath: ./Dockerfile.backend
+    dockerfilePath: ./Dockerfile
     dockerContext: .
     buildCommand: ""
-    startCommand: "uvicorn server:app --host 0.0.0.0 --port 8001"
+    startCommand: ""
     envVars:
       - key: JWT_SECRET_KEY
         generateValue: true
@@ -23,15 +24,29 @@ services:
       - key: ANTHROPIC_API_KEY
         sync: false
       - key: SQLITE_DB_PATH
-        value: /app/data/german_ai.db
+        value: /app/backend/data/german_ai.db
       - key: TESSERACT_AVAILABLE
         value: true
       - key: TESSERACT_VERSION
         value: 5.3.0
+      - key: TESSDATA_PREFIX
+        value: /usr/share/tesseract-ocr/5/tessdata
       - key: PATH
-        value: /usr/bin:/usr/local/bin:/opt/render/project/src/.venv/bin:/home/render/.bun/bin:/opt/render/project/nodes/node-22.16.0/bin:/opt/render/project/src/.venv/bin:/opt/render/project/poetry/bin:/opt/render/project/uv/bin:/home/render/.python-poetry/bin:/usr/local/cargo/bin:/opt/render/project/.cargo/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/home/render/bin
-    
-  # Frontend сервис
+        value: /usr/bin:/usr/local/bin:/app/.venv/bin
+      - key: PYTHONPATH
+        value: /app/backend
+      - key: OCR_SPACE_API_KEY
+        sync: false
+      - key: AZURE_COMPUTER_VISION_KEY
+        sync: false
+      - key: AZURE_COMPUTER_VISION_ENDPOINT
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+  
+  # Frontend сервис (отдельно)
   - type: web
     name: german-ai-frontend
     env: docker

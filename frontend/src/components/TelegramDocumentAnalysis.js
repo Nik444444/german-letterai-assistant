@@ -139,7 +139,7 @@ const TelegramDocumentAnalysis = ({ onBack }) => {
 
             console.log('Analysis response:', response.data);
 
-            if (response.data.analysis) {
+            if (response.data && (response.data.analysis || response.data.super_analysis)) {
                 setAnalysisResult(response.data);
                 setShowAnalysisResult(true);
                 
@@ -148,10 +148,11 @@ const TelegramDocumentAnalysis = ({ onBack }) => {
                     showTelegramAlert(t('analysisSuccess'));
                 }
             } else {
-                setError('Анализ не удался - нет данных в ответе');
+                console.error('Analysis response missing expected fields:', response.data);
+                setError('Анализ не удался - неверный формат ответа от сервера');
                 if (isTelegramWebApp()) {
                     hapticFeedback('error');
-                    showTelegramAlert('Анализ не удался - нет данных в ответе');
+                    showTelegramAlert('Анализ не удался - неверный формат ответа от сервера');
                 }
             }
         } catch (error) {

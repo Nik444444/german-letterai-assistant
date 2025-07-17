@@ -646,25 +646,30 @@ class ImprovedOCRService:
         return {
             "service_name": "Improved OCR Service",
             "methods": {
+                "tesseract_ocr": {
+                    "available": self.tesseract_available,
+                    "description": "Tesseract OCR (основной метод) - традиционный OCR с поддержкой многих языков"
+                },
                 "llm_vision": {
                     "available": self.llm_vision_available,
-                    "description": "LLM Vision (Gemini Pro Vision, GPT-4V, Claude 3.5 Sonnet)"
+                    "description": "LLM Vision (fallback) - Gemini Pro Vision, GPT-4V, Claude 3.5 Sonnet"
                 },
                 "ocr_space": {
                     "available": self.ocr_space_available,
-                    "description": "OCR.space API (бесплатный лимит)"
+                    "description": "OCR.space API (fallback) - бесплатный лимит"
                 },
                 "azure_vision": {
                     "available": self.azure_vision_available,
-                    "description": "Azure Computer Vision API"
+                    "description": "Azure Computer Vision API (fallback)"
                 },
                 "direct_pdf": {
                     "available": True,
                     "description": "Прямое извлечение текста из PDF"
                 }
             },
-            "primary_method": "llm_vision" if self.llm_vision_available else "ocr_space",
-            "tesseract_dependency": False,
+            "primary_method": "tesseract_ocr" if self.tesseract_available else "llm_vision",
+            "tesseract_dependency": True,
+            "tesseract_version": "5.3.0" if self.tesseract_available else "not_installed",
             "production_ready": True
         }
 
